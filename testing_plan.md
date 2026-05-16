@@ -122,7 +122,20 @@ file /tmp/test_png.gif | grep -q "GIF image" && echo "PASS" || echo "FAIL"
 
 ---
 
-## 10. Response Headers (IE5 Compatibility)
+## 10. Image Conversion (SVG → GIF)
+
+**Test:** Fetch an SVG image and verify it's rasterized to GIF.
+
+```bash
+curl -s -o /tmp/test_svg.gif "$BASE/proxy/https://upload.wikimedia.org/wikipedia/commons/6/6b/Bitmap_VS_SVG.svg"
+file /tmp/test_svg.gif | grep -q "GIF image" && echo "PASS" || echo "FAIL"
+```
+
+**Expected:** Output is GIF image data, rasterized at 320px wide via rsvg-convert.
+
+---
+
+## 11. Response Headers (IE5 Compatibility)
 
 **Test:** Verify Content-Type includes charset and Content-Disposition is inline.
 
@@ -195,6 +208,7 @@ run 'curl -s "$BASE/proxy/http://www.news.com" | grep -q "<!DOCTYPE HTML PUBLIC"
 run 'curl -s "$BASE/proxy/http://example.com" | grep -q "href=\"/proxy/"' "Link rewriting"
 run 'curl -s -o /tmp/t.gif "$BASE/proxy/https://i.duckduckgo.com/i/e329e62b4aa0b1de.jpg" && file /tmp/t.gif | grep -q "GIF image"' "JPEG to GIF"
 run 'curl -s -o /tmp/t2.gif "$BASE/proxy/https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png" && file /tmp/t2.gif | grep -q "GIF image"' "PNG to GIF"
+run 'curl -s -o /tmp/t3.gif "$BASE/proxy/https://upload.wikimedia.org/wikipedia/commons/6/6b/Bitmap_VS_SVG.svg" && file /tmp/t3.gif | grep -q "GIF image"' "SVG to GIF"
 run 'curl -sI "$BASE/proxy/http://example.com" | grep -qi "charset=iso-8859-1"' "Charset header"
 run 'curl -sI "$BASE/proxy/http://example.com" | grep -qi "content-disposition: inline"' "Content-Disposition header"
 run 'curl -s "$BASE/proxy/http://www.wikipedia.org" | grep -q "href=\"/proxy/http://en.wikipedia.org/"' "Protocol-relative URL resolution"

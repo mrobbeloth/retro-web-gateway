@@ -19,7 +19,9 @@ Resources:
       Environment:
         Variables:
           MAGICK_CODER_MODULE_PATH: /var/task/lib/ImageMagick/coders
+          MAGICK_CONFIGURE_PATH: /var/task/lib/ImageMagick/config
           LD_LIBRARY_PATH: /var/task/lib
+          PATH: /var/task/bin:/usr/local/bin:/usr/bin:/bin
       FunctionUrlConfig:
         AuthType: NONE
       Events:

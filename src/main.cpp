@@ -172,6 +172,9 @@ static invocation_response handler(invocation_request const& request) {
     if (content_type.find("text/html") != std::string::npos) {
         body = simplify_html(response.body, target_url);
         content_type = "text/html; charset=iso-8859-1";
+    } else if (content_type.find("image/svg+xml") != std::string::npos) {
+        body = process_image(response.body, "image/svg+xml");
+        content_type = "image/gif";
     } else if (content_type.find("image/") != std::string::npos) {
         body = process_image(response.body, content_type);
         content_type = "image/gif";
