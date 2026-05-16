@@ -2,7 +2,36 @@
 #include <gumbo.h>
 #include <sstream>
 
-static void walk(GumboNode* node, std::ostringstream& out) {
+static const std::string PROXY_PREFIX = "/proxy/";
+
+// Resolve a possibly-relative URL against a base URL
+static std::string resolve_url(const std::string& href, const std::string& base_url) {
+    if (href.empty() || href[0] == '#') return href;
+    if (href.find("http://") == 0 || href.find("https://") == 0) return href;
+    if (href.find("//") == 0) return "http:" + href;
+
+    // Extract scheme+host from base_url
+    std::string base_origin;
+    auto scheme_end = base_url.find("://");
+    if (scheme_end != std::string::npos) {
+        auto path_start = base_url.find('/', scheme_end + 3);
+        base_origin = (path_start != std::string::npos)
+            ? base_url.substr(0, path_start)
+            : base_url;
+    } else {
+        base_origin = base_url;
+    }
+
+    if (href[0] == '/') return base_origin + href;
+
+    // Relative path: append to base directory
+    auto last_slash = base_url.rfind('/');
+    if (last_slash != std::string::npos && last_slash > base_url.find("://") + 2)
+        return base_url.substr(0, last_slash + 1) + href;
+    return base_origin + "/" + href;
+}
+
+static void walk(GumboNode* node, std::ostringstream& out, const std::string& base_url) {
     if (node->type == GUMBO_NODE_TEXT) {
         out << node->v.text.text;
         return;
@@ -11,14 +40,12 @@ static void walk(GumboNode* node, std::ostringstream& out) {
 
     GumboTag tag = node->v.element.tag;
 
-    // Skip script, style, noscript, svg, canvas
     if (tag == GUMBO_TAG_SCRIPT || tag == GUMBO_TAG_STYLE ||
         tag == GUMBO_TAG_NOSCRIPT || tag == GUMBO_TAG_SVG ||
         tag == GUMBO_TAG_CANVAS) {
         return;
     }
 
-    // Emit only retro-safe tags
     const char* tagname = gumbo_normalized_tagname(tag);
     bool emit_tag = (tag == GUMBO_TAG_HTML || tag == GUMBO_TAG_HEAD ||
                      tag == GUMBO_TAG_TITLE || tag == GUMBO_TAG_BODY ||
@@ -35,13 +62,21 @@ static void walk(GumboNode* node, std::ostringstream& out) {
 
     if (emit_tag) {
         out << "<" << tagname;
-        // Preserve href and src attributes only
         GumboVector* attrs = &node->v.element.attributes;
         for (unsigned i = 0; i < attrs->length; i++) {
             auto* attr = static_cast<GumboAttribute*>(attrs->data[i]);
-            if (std::string(attr->name) == "href" || std::string(attr->name) == "src" ||
-                std::string(attr->name) == "alt") {
-                out << " " << attr->name << "=\"" << attr->value << "\"";
+            std::string name = attr->name;
+            std::string value = attr->value;
+
+            if (name == "href" || name == "src") {
+                // Resolve and rewrite through proxy
+                std::string resolved = resolve_url(value, base_url);
+                if (resolved.find("http") == 0) {
+                    value = PROXY_PREFIX + resolved;
+                }
+                out << " " << name << "=\"" << value << "\"";
+            } else if (name == "alt") {
+                out << " " << name << "=\"" << value << "\"";
             }
         }
         out << ">";
@@ -49,7 +84,7 @@ static void walk(GumboNode* node, std::ostringstream& out) {
 
     GumboVector* children = &node->v.element.children;
     for (unsigned i = 0; i < children->length; i++) {
-        walk(static_cast<GumboNode*>(children->data[i]), out);
+        walk(static_cast<GumboNode*>(children->data[i]), out, base_url);
     }
 
     if (emit_tag && tag != GUMBO_TAG_BR && tag != GUMBO_TAG_HR && tag != GUMBO_TAG_IMG) {
@@ -57,11 +92,11 @@ static void walk(GumboNode* node, std::ostringstream& out) {
     }
 }
 
-std::string simplify_html(const std::string& html) {
+std::string simplify_html(const std::string& html, const std::string& base_url) {
     GumboOutput* output = gumbo_parse(html.c_str());
     std::ostringstream out;
     out << "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 3.2 Final//EN\">\n";
-    walk(output->root, out);
+    walk(output->root, out, base_url);
     gumbo_destroy_output(&kGumboDefaultOptions, output);
     return out.str();
 }

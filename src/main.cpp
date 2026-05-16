@@ -46,16 +46,44 @@ static invocation_response handler(invocation_request const& request) {
     std::string path = json_get_string(request.payload, "rawPath");
     if (path.empty()) path = json_get_string(request.payload, "path");
 
-    const std::string prefix = "/proxy/";
+    // Also check queryStringParameters for "url" param (proxy mode)
     std::string target_url;
+
+    // Mode 1: /proxy/http://example.com
+    const std::string prefix = "/proxy/";
     auto ppos = path.find(prefix);
     if (ppos != std::string::npos) {
         target_url = path.substr(ppos + prefix.size());
     }
 
+    // Mode 2: /?url=http://example.com (for IE5 proxy via PAC/rewrite)
     if (target_url.empty()) {
+        target_url = json_get_string(request.payload, "rawQueryString");
+        // rawQueryString is "url=http://..." — extract after "url="
+        const std::string qprefix = "url=";
+        if (target_url.find(qprefix) == 0) {
+            target_url = target_url.substr(qprefix.size());
+        } else {
+            target_url.clear();
+        }
+    }
+
+    if (target_url.empty()) {
+        std::string portal =
+            "<html><head><title>Retro Web Gateway</title></head><body>"
+            "<h1>Retro Web Gateway</h1>"
+            "<form action=\"/proxy/\" method=\"get\">"
+            "<p>Enter a URL to browse:</p>"
+            "<input type=\"text\" name=\"url\" size=\"60\" value=\"http://\">"
+            "<input type=\"submit\" value=\"Go\">"
+            "</form>"
+            "<hr><p><b>Bookmarks:</b></p><ul>"
+            "<li><a href=\"/proxy/http://www.news.com\">News (CNET)</a></li>"
+            "<li><a href=\"/proxy/http://www.wikipedia.org\">Wikipedia</a></li>"
+            "<li><a href=\"/proxy/http://example.com\">Example.com</a></li>"
+            "</ul></body></html>";
         return invocation_response::success(
-            make_response(400, "<html><body><h1>Bad Request</h1><p>Use /proxy/URL</p></body></html>", "text/html", false),
+            make_response(200, portal, "text/html", false),
             "application/json");
     }
 
@@ -65,7 +93,7 @@ static invocation_response handler(invocation_request const& request) {
     std::string content_type = response.content_type;
 
     if (content_type.find("text/html") != std::string::npos) {
-        body = simplify_html(response.body);
+        body = simplify_html(response.body, target_url);
         content_type = "text/html";
     } else if (content_type.find("image/") != std::string::npos) {
         body = process_image(response.body, content_type);

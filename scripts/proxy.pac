@@ -1,10 +1,17 @@
-// PAC (Proxy Auto-Configuration) file for vintage browsers
-// Configure your vintage browser to use this PAC file URL, or
-// manually set the HTTP proxy to your API Gateway endpoint.
+// PAC (Proxy Auto-Configuration) file for IE5 and vintage browsers
 //
-// Replace YOUR_API_ID and REGION with your deployed values.
+// Setup in IE5:
+//   Tools > Internet Options > Connections > LAN Settings
+//   Check "Use automatic configuration script"
+//   Address: http://d3mxaw3jf3qs5.cloudfront.net/proxy.pac
+//
+// (Host this file on any HTTP server your vintage machine can reach)
 
 function FindProxyForURL(url, host) {
-    // Route all HTTP traffic through the retro proxy
-    return "PROXY YOUR_API_ID.execute-api.REGION.amazonaws.com:443";
+    // Don't proxy requests already going to our gateway
+    if (host == "d3mxaw3jf3qs5.cloudfront.net") {
+        return "DIRECT";
+    }
+    // Route everything else through our gateway
+    return "PROXY d3mxaw3jf3qs5.cloudfront.net:80";
 }

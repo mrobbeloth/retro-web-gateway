@@ -16,6 +16,8 @@ Resources:
       CodeUri: build/retro-web-gateway.zip
       Architectures:
         - x86_64
+      FunctionUrlConfig:
+        AuthType: NONE
       Events:
         ProxyRequest:
           Type: HttpApi
@@ -23,13 +25,46 @@ Resources:
             ApiId: !Ref RetroApi
             Path: /proxy/{proxy+}
             Method: ANY
+        Root:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RetroApi
+            Path: /
+            Method: GET
 
   RetroApi:
     Type: AWS::Serverless::HttpApi
     Properties:
       StageName: prod
 
+  RetroDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: Retro Web Gateway - TLS 1.0 compatible endpoint
+        DefaultCacheBehavior:
+          TargetOriginId: ApiGatewayOrigin
+          ViewerProtocolPolicy: allow-all
+          AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+          OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+        Origins:
+          - Id: ApiGatewayOrigin
+            DomainName: !Sub "${RetroApi}.execute-api.${AWS::Region}.amazonaws.com"
+            OriginPath: /prod
+            CustomOriginConfig:
+              HTTPSPort: 443
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols: [TLSv1.2]
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+          MinimumProtocolVersion: SSLv3
+
 Outputs:
   ProxyEndpoint:
-    Description: Base URL for the retro proxy
+    Description: API Gateway URL (modern browsers, TLS 1.2+)
     Value: !Sub "https://${RetroApi}.execute-api.${AWS::Region}.amazonaws.com/prod/proxy/"
+  RetroEndpoint:
+    Description: CloudFront URL (vintage browsers, plain HTTP on port 80)
+    Value: !Sub "http://${RetroDistribution.DomainName}/"
