@@ -8,7 +8,7 @@ static const std::string PROXY_PREFIX = "/proxy/";
 static std::string resolve_url(const std::string& href, const std::string& base_url) {
     if (href.empty() || href[0] == '#') return href;
     if (href.find("http://") == 0 || href.find("https://") == 0) return href;
-    if (href.find("//") == 0) return "http:" + href;
+    if (href.size() > 2 && href[0] == '/' && href[1] == '/') return "http:" + href;
 
     // Extract scheme+host from base_url
     std::string base_origin;

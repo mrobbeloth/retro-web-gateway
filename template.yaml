@@ -16,6 +16,10 @@ Resources:
       CodeUri: build/retro-web-gateway.zip
       Architectures:
         - x86_64
+      Environment:
+        Variables:
+          MAGICK_CODER_MODULE_PATH: /var/task/lib/ImageMagick/coders
+          LD_LIBRARY_PATH: /var/task/lib
       FunctionUrlConfig:
         AuthType: NONE
       Events:
