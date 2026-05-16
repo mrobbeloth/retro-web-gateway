@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Retro-fying Web Gateway - HTTP proxy for vintage browsers
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+
+Resources:
+  RetroProxyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: retro-web-gateway
+      Runtime: provided.al2023
+      CodeUri: build/retro-web-gateway.zip
+      Architectures:
+        - x86_64
+      Events:
+        ProxyRequest:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RetroApi
+            Path: /proxy/{proxy+}
+            Method: ANY
+
+  RetroApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: prod
+
+Outputs:
+  ProxyEndpoint:
+    Description: Base URL for the retro proxy
+    Value: !Sub "https://${RetroApi}.execute-api.${AWS::Region}.amazonaws.com/prod/proxy/"
