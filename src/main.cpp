@@ -103,6 +103,11 @@ static invocation_response handler(invocation_request const& request) {
     auto ppos = path.find(prefix);
     if (ppos != std::string::npos) {
         target_url = path.substr(ppos + prefix.size());
+        // Fix collapsed double-slash (API Gateway/CloudFront normalizes // to /)
+        if (target_url.find("http:/") == 0 && target_url.find("http://") != 0)
+            target_url = "http://" + target_url.substr(6);
+        else if (target_url.find("https:/") == 0 && target_url.find("https://") != 0)
+            target_url = "https://" + target_url.substr(7);
         // Reconstruct query string if present (API Gateway strips it from path)
         std::string qs = json_get_string(request.payload, "rawQueryString");
         if (!qs.empty() && qs.find("url=") != 0 && qs.find("q=") != 0) {
